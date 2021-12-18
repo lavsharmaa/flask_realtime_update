@@ -9,8 +9,6 @@ from github import Github
 import time
 import os, sys, time
 
-__author__ = 'slynn'
-
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 app.config['DEBUG'] = True
