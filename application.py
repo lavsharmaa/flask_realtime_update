@@ -1,29 +1,13 @@
-"""
-Demo Flask application to test the operation of Flask with socket.io
-
-Aim is to create a webpage that is constantly updated with random numbers from a background python process.
-
-30th May 2014
-
-===================
-
-Updated 13th April 2018
-
-+ Upgraded code to Python 3
-+ Used Python3 SocketIO implementation
-+ Updated CDN Javascript and CSS sources
-
-"""
-
-
-
-
 # Start with a basic flask app webpage.
 from flask_socketio import SocketIO, emit
 from flask import Flask, render_template, url_for, copy_current_request_context
 from random import random
 from time import sleep
 from threading import Thread, Event
+from github import Github
+# new
+import time
+import os, sys, time
 
 __author__ = 'slynn'
 
@@ -45,11 +29,65 @@ def randomNumberGenerator():
     """
     #infinite loop of magical random numbers
     print("Making random numbers")
-    while not thread_stop_event.isSet():
-        number = round(random()*10, 3)
-        print(number)
-        socketio.emit('newnumber', {'number': number}, namespace='/test')
-        socketio.sleep(5)
+    # one way to fetch single line-wise
+    # doesnt fetch all the lines at once if already present
+    # cur = 0
+    # while True:
+    #     try:
+    #         with open('text.txt') as f:
+    #             f.seek(0,2)
+    #             if f.tell() < cur:
+    #                 f.seek(0,0)
+    #             else:
+    #                 f.seek(cur,0)
+    #             for line in f:
+    #                 print(line.strip())
+    #                 socketio.emit('newnumber', {'number': line.strip()}, namespace='/test')
+    #                 socketio.sleep(5)
+    #             cur = f.tell()
+    #     except IOError:
+    #         pass
+    #     time.sleep(1)
+
+    # another way to read all at once and then read one by one
+    name = "text.txt"
+    current = open(name, "r")
+    curino = os.fstat(current.fileno()).st_ino
+    while True:
+        while True:
+            buf = current.read(1024)
+            if buf == "":
+                break
+            sys.stdout.write(buf.strip())
+            socketio.emit('newnumber', {'number': buf.strip()}, namespace='/test')
+            socketio.sleep(5)
+        try:
+            if os.stat(name).st_ino != curino:
+                new = open(name, "r")
+                current.close()
+                current = new
+                curino = os.fstat(current.fileno()).st_ino
+                continue
+        except IOError:
+            pass
+        time.sleep(1)
+
+    # while not thread_stop_event.isSet():
+    #     # First create a Github instance:
+
+    #     # using an access token
+    #     # g = Github("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")
+    #     # repo = g.get_repo("lavsharmaa/sample-test")
+    #     # contents = repo.get_contents("README.md")
+    #     # # Then play with your Github objects:
+    #     # print(contents)
+    #     # socketio.emit('newnumber', {'number': contents}, namespace='/test')
+    #     # socketio.sleep(5)
+
+    #     number = round(random()*10, 3)
+    #     print(number)
+    #     socketio.emit('newnumber', {'number': number}, namespace='/test')
+    #     socketio.sleep(5)
 
 
 @app.route('/')
@@ -64,7 +102,7 @@ def test_connect():
     print('Client connected')
 
     #Start the random number generator thread only if the thread has not been started before.
-    if not thread.isAlive():
+    if not thread.is_alive():
         print("Starting Thread")
         thread = socketio.start_background_task(randomNumberGenerator)
 
